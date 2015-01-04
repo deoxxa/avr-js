@@ -73,7 +73,21 @@ Core.prototype.step = function step() {
     pc = this.mem[this.sp-2] + (this.mem[this.sp-1] << 8);
     break;
   case "in":
-
+    pc = pc + 1;
+    this.reg[instruction.operands[0].value] = this.io[instruction.operands[1].value];
+    break;
+  case "out":
+    pc = pc + 1;
+    this.io[instruction.operands[0].value] = this.reg[instruction.operands[1].value];
+    break;
+  case "ldi":
+    pc = pc + 1;
+    this.reg[instruction.operands[0].value] = instruction.operands[1].value;
+    break;
+  case "eor":
+    pc = pc + 1;
+    this.reg[instruction.operands[0].value] = this.reg[instruction.operands[0].value] ^ this.reg[instruction.operands[1].value];
+    break;
   default:
     throw new Error("unhandled instruction: " + instruction.type);
   }
