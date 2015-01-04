@@ -1,5 +1,11 @@
 var defs = require("./defs");
 
+var le = (function() {
+  var buffer = new ArrayBuffer(2);
+  new DataView(buffer).setInt16(0, 256, true);
+  return new Int16Array(buffer)[0] === 256;
+})();
+
 var bitsFromMask = exports.bitsFromMask = function bitsFromMask(mask, data) {
   var result = 0;
 
@@ -53,8 +59,6 @@ var parseOperand = exports.parseOperand = function parseOperand(optype, value) {
       } else {
         result = value & 0x7f;
       }
-      /* Multiply by two to point to a byte address */
-      result *= 2;
 
       break;
     case "RELATIVE_ADDRESS":
@@ -68,25 +72,7 @@ var parseOperand = exports.parseOperand = function parseOperand(optype, value) {
       } else {
         result = value & 0xfff;
       }
-      /* Multiply by two to point to a byte address */
-      result *= 2;
 
-      break;
-    case "LONG_ABSOLUTE_ADDRESS":
-      /* Multiply by two to point to a byte address */
-      result = value * 2;
-      break;
-    case "REGISTER_STARTR16":
-      /* Register offset from R16 */
-      result = 16 + value;
-      break;
-    case "REGISTER_EVEN_PAIR":
-      /* Register even */
-      result = value * 2;
-      break;
-    case "REGISTER_EVEN_PAIR_STARTR24":
-      /* Register even offset from R24 */
-      result = 24 + value * 2;
       break;
     default:
       /* Copy the operand with no additional processing */
@@ -101,18 +87,18 @@ var parseOperand = exports.parseOperand = function parseOperand(optype, value) {
 };
 
 var read = exports.read = function read(data, pos) {
-  if (data.length - pos < 2) {
+  if (data.byteLength - pos < 2) {
     return null;
   }
 
-  var instruction = data.readUInt16LE(pos);
+  var instruction = data.getUint16(pos, le);
 
   var def = lookupDefinition(instruction);
   if (def === null) {
     return null;
   }
 
-  if (data.length - pos < def[1]) {
+  if (data.byteLength - pos < def[1]) {
     return null;
   }
 
@@ -122,7 +108,7 @@ var read = exports.read = function read(data, pos) {
     var value = bitsFromMask(def[4][i], instruction);
 
     if (def[5][i] === "LONG_ABSOLUTE_ADDRESS") {
-      value = (value << 16) + data.readUInt16LE(pos + 2);
+      value = (value << 16) + data.getUint16(pos + 2, le);
     }
 
     operands[i] = parseOperand(def[5][i], value);
@@ -131,7 +117,7 @@ var read = exports.read = function read(data, pos) {
   return {
     pos: pos,
     len: def[1],
-    buf: data.slice(pos, pos+def[1]),
+    buf: data.buffer.slice(pos, pos+def[1]),
     type: def[0],
     operands: operands,
   };
