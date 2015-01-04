@@ -9,5 +9,5 @@ var d = new Disassembler({
 });
 
 for (var r = d.next(); r != null; r = d.next()) {
-  console.log("%s: [%s] %s %j", r.offset.toString(16), r.raw.toString(16), r.type, r.operands);
+  console.log("%s: [%s] %s %j", r.pos.toString(16), r.buf.toString("hex"), r.type, r.operands);
 }

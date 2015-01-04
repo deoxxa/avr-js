@@ -1,6 +1,6 @@
 var defs = require("./defs");
 
-exports.bitsFromMask = function bitsFromMask(mask, data) {
+var bitsFromMask = exports.bitsFromMask = function bitsFromMask(mask, data) {
   var result = 0;
 
   /* Sweep through mask from bits 0 to 15 */
@@ -19,7 +19,7 @@ exports.bitsFromMask = function bitsFromMask(mask, data) {
   return result;
 };
 
-exports.lookupDefinition = function lookupDefinition(instruction) {
+var lookupDefinition = exports.lookupDefinition = function lookupDefinition(instruction) {
   var def = null;
 
   for (var i=0;i<defs.length;i++) {
@@ -38,7 +38,7 @@ exports.lookupDefinition = function lookupDefinition(instruction) {
   return def;
 };
 
-exports.parseOperand = function parseOperand(optype, value) {
+var parseOperand = exports.parseOperand = function parseOperand(optype, value) {
   var result = 0;
 
   switch (optype) {
@@ -97,5 +97,42 @@ exports.parseOperand = function parseOperand(optype, value) {
   return {
     type: optype,
     value: result,
+  };
+};
+
+var read = exports.read = function read(data, pos) {
+  if (data.length - pos < 2) {
+    return null;
+  }
+
+  var instruction = data.readUInt16LE(pos);
+
+  var def = lookupDefinition(instruction);
+  if (def === null) {
+    return null;
+  }
+
+  if (data.length - pos < def[1]) {
+    return null;
+  }
+
+  var operands = new Array(def[3]);
+
+  for (var i=0;i<def[3];i++) {
+    var value = bitsFromMask(def[4][i], instruction);
+
+    if (def[5][i] === "LONG_ABSOLUTE_ADDRESS") {
+      value = (value << 16) + data.readUInt16LE(pos + 2);
+    }
+
+    operands[i] = parseOperand(def[5][i], value);
+  }
+
+  return {
+    pos: pos,
+    len: def[1],
+    buf: data.slice(pos, pos+def[1]),
+    type: def[0],
+    operands: operands,
   };
 };
